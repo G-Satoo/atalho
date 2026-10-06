@@ -155,6 +155,42 @@ describe("worker de cliques", () => {
     );
   });
 
+  it("descarta o clique de um link apagado sem derrubar o resto do lote", async () => {
+    // Acontece de verdade: o clique entra na fila, o dono apaga o
+    // link, e segundos depois o worker tenta gravar algo que já não
+    // tem dono. A chave estrangeira recusa a linha — e, como o lote
+    // é um INSERT só, antes disso a recusa levava junto os cliques
+    // legítimos que estavam no mesmo lote.
+    const vivo = await cliente.post("/api/links", { destino: "https://vivo.com" });
+    const morto = await cliente.post("/api/links", { destino: "https://morto.com" });
+
+    const idVivo = vivo.dados.link.id;
+    const idMorto = morto.dados.link.id;
+
+    await pool.query("DELETE FROM links WHERE id = $1", [idMorto]);
+
+    // Os dois no mesmo lote: o órfão primeiro, de propósito.
+    for (const linkId of [idMorto, idVivo]) {
+      await filaCliques.add("clique", {
+        linkId,
+        ocorridoEm: new Date().toISOString(),
+        userAgent: null,
+        referer: null
+      });
+    }
+
+    await esperarCliques(1);
+
+    // Uma folga para o caso de o órfão ainda estar para ser gravado —
+    // se ele entrasse, o total passaria de 1.
+    await new Promise((resolver) => setTimeout(resolver, 500));
+
+    const { rows } = await pool.query("SELECT link_id FROM cliques");
+
+    assert.equal(rows.length, 1, "o clique do link vivo deveria ser o único gravado");
+    assert.equal(rows[0].link_id, idVivo);
+  });
+
   it("aceita clique sem User-Agent nem Referer", async () => {
     // Bots, scripts e clientes antigos. O clique conta do mesmo
     // jeito, com as colunas nulas — o NOT NULL está só no link_id

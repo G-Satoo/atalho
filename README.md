@@ -4,7 +4,7 @@ Encurtador de links com painel de analytics. O redirecionamento
 sai do cache e responde sem tocar no banco; o clique vai para uma
 fila e é gravado por um worker separado, em lote.
 
-`Node 22` · `React 18` · `PostgreSQL 16` · `Redis 7` · `BullMQ` · `Docker Compose` · `86 testes (30 unidade + 56 integração)`
+`Node 22` · `React 18` · `PostgreSQL 16` · `Redis 7` · `BullMQ` · `Docker Compose` · `87 testes (30 unidade + 57 integração)`
 
 ![Captura do painel](captura.png)
 

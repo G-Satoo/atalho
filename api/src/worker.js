@@ -72,27 +72,59 @@ async function gravarLote() {
       linha.linkId, linha.ocorridoEm, linha.dispositivo,
       linha.navegador, linha.sistema, linha.origem
     );
-    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`;
+
+    // Os tipos vão explícitos na primeira linha porque, dentro de um
+    // VALUES usado como subconsulta, o Postgres não tem coluna de
+    // destino para inferir o tipo de um parâmetro. As demais linhas
+    // herdam os tipos desta.
+    const tipos = indice === 0
+      ? ["::int", "::timestamptz", "::text", "::text", "::text", "::text"]
+      : ["", "", "", "", "", ""];
+
+    return `($${base + 1}${tipos[0]}, $${base + 2}${tipos[1]}, $${base + 3}${tipos[2]}, ` +
+           `$${base + 4}${tipos[3]}, $${base + 5}${tipos[4]}, $${base + 6}${tipos[5]})`;
   });
 
   try {
-    await pool.query(
+    // O WHERE EXISTS descarta, dentro do próprio INSERT, os cliques
+    // cujo link já não existe.
+    //
+    // Por que isso é necessário: entre o clique entrar na fila e o
+    // worker gravá-lo passam segundos — e nesse intervalo o dono pode
+    // ter apagado o link. Aí a chave estrangeira link_id recusa a
+    // linha, e como o lote é um INSERT só, a recusa de UMA linha
+    // derrubava as outras 99 junto. Um clique órfão envenenava o
+    // lote inteiro, e cliques legítimos acabavam em "failed".
+    //
+    // Descartar é a resposta certa aqui: o link foi apagado e, com
+    // ele, todo o histórico dele (ON DELETE CASCADE). Guardar a
+    // estatística de algo que não existe mais não serviria a ninguém.
+    const resultado = await pool.query(
       `INSERT INTO cliques
          (link_id, ocorrido_em, dispositivo, navegador, sistema, origem)
-       VALUES ${grupos.join(", ")}`,
+       SELECT v.link_id, v.ocorrido_em, v.dispositivo, v.navegador, v.sistema, v.origem
+         FROM (VALUES ${grupos.join(", ")})
+              AS v(link_id, ocorrido_em, dispositivo, navegador, sistema, origem)
+        WHERE EXISTS (SELECT 1 FROM links l WHERE l.id = v.link_id)`,
       valores
     );
 
     for (const job of aguardando) job.resolver();
-    console.log(`${linhas.length} clique(s) gravado(s)`);
+
+    const descartados = linhas.length - resultado.rowCount;
+    console.log(
+      `${resultado.rowCount} clique(s) gravado(s)` +
+      (descartados > 0 ? ` (${descartados} de link apagado, descartado(s))` : "")
+    );
   } catch (erro) {
     console.error("Falha ao gravar lote:", erro.message);
 
-    // Todo o lote falha junto e o BullMQ vai tentar de novo, com
+    // Sobrou para cá o que não é esperado — banco fora do ar, por
+    // exemplo. O lote inteiro falha e o BullMQ tenta de novo, com
     // espera crescente (ver servicos/fila.js). Gravar duas vezes o
-    // mesmo clique é possível numa falha parcial rara; para
-    // contagem de acesso isso é aceitável, e o custo de evitar
-    // (chave de idempotência por clique) não se paga aqui.
+    // mesmo clique é possível numa falha parcial rara; para contagem
+    // de acesso isso é aceitável, e o custo de evitar (chave de
+    // idempotência por clique) não se paga aqui.
     for (const job of aguardando) job.rejeitar(erro);
   }
 }
