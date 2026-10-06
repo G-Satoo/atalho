@@ -1,0 +1,131 @@
+# ============================================================
+# Ambiente de desenvolvimento - Atalho
+#
+# Sobe quatro conteineres:
+#   db      -> Postgres, guarda usuarios, links e cliques
+#   redis   -> cache dos destinos, sessoes, rate limit e a fila
+#   adminer -> interface web para rodar SQL, em localhost:8081
+#   db-teste/redis-teste -> so com o profile "teste" (ver abaixo)
+#
+# Comandos principais:
+#   docker compose up -d         sobe tudo em segundo plano
+#   docker compose ps            mostra o que esta rodando
+#   docker compose logs -f db    mostra os logs do banco
+#   docker compose down          desliga (os dados continuam salvos)
+#
+# As portas fogem do padrao de proposito: a 5432 costuma estar
+# ocupada pelo Postgres nativo do Windows e a 5433/5434 pelo
+# projeto clima-dashboard. Se mudar aqui, ajuste o .env.
+# ============================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: atalho-db
+    restart: unless-stopped
+
+    # Estas variaveis so tem efeito na PRIMEIRA vez que o volume
+    # "dados-postgres" e criado. Mudar depois nao adianta - e
+    # preciso apagar o volume (docker compose down -v) para recriar.
+    environment:
+      POSTGRES_USER: atalho
+      POSTGRES_PASSWORD: atalho123
+      POSTGRES_DB: atalho
+
+    ports:
+      - "5435:5432"
+
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+
+    # Diferente do clima-dashboard, aqui NAO montamos schema.sql em
+    # docker-entrypoint-initdb.d: as tabelas nascem pelo runner de
+    # migracoes (npm run migrar), que e quem controla a versao do
+    # banco. Um banco novo e um banco velho passam pelo mesmo caminho.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atalho -d atalho"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: atalho-redis
+    restart: unless-stopped
+
+    # appendonly: grava cada escrita num log. Sem isso o Redis so
+    # salva de tempos em tempos e um restart perderia sessoes e,
+    # pior, cliques que ainda estavam na fila esperando o worker.
+    command: ["redis-server", "--appendonly", "yes"]
+
+    # 6380 porque a 6379 pode ter um Redis nativo rodando.
+    ports:
+      - "6380:6379"
+
+    volumes:
+      - dados-redis:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    container_name: atalho-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ----- Ambiente de teste -----
+  # Fica fora do "docker compose up" do dia a dia por causa do
+  # profile. Sobe com:
+  #   docker compose --profile teste up -d db-teste redis-teste
+  #
+  # Sem volume e com tmpfs: cada restart nasce vazio. E de proposito -
+  # sao os proprios testes que rodam as migracoes, o que tambem
+  # prova que elas funcionam do zero.
+  db-teste:
+    image: postgres:16-alpine
+    container_name: atalho-db-teste
+    restart: "no"
+    profiles: ["teste"]
+    environment:
+      POSTGRES_USER: atalho
+      POSTGRES_PASSWORD: atalho123
+      POSTGRES_DB: atalho_teste
+    ports:
+      - "5436:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atalho -d atalho_teste"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis-teste:
+    image: redis:7-alpine
+    container_name: atalho-redis-teste
+    restart: "no"
+    profiles: ["teste"]
+    # Sem appendonly: e descartavel mesmo.
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dados-postgres:
+  dados-redis:

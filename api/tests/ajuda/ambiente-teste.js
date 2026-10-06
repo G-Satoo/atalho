@@ -1,0 +1,37 @@
+// ============================================================
+// Ambiente dos testes de integração
+//
+// PRECISA ser o primeiro import de todo arquivo de teste de
+// integração. Não é preferência de estilo: pool.js e redis.js
+// leem as variáveis de ambiente no momento em que são
+// carregados, e os imports de um módulo ESM são avaliados na
+// ordem em que aparecem. Se o import do app vier antes deste, a
+// conexão já terá nascido apontando para o banco de
+// desenvolvimento — e os testes apagariam os seus dados.
+//
+// Sobe os containers de teste com:
+//   docker compose --profile teste up -d db-teste redis-teste
+// ============================================================
+
+// Portas 5436 e 6381: os containers do profile "teste", que
+// nascem vazios a cada restart.
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL_TESTE ||
+  "postgres://atalho:atalho123@localhost:5436/atalho_teste";
+
+process.env.REDIS_URL = process.env.REDIS_URL_TESTE || "redis://localhost:6381";
+
+process.env.DATABASE_SSL = "false";
+process.env.URL_BASE = "http://localhost:3002";
+process.env.COOKIE_SEGURO = "false";
+
+// Trava de segurança: se por algum motivo a URL apontar para o
+// banco de desenvolvimento, é melhor o teste nem começar do que
+// truncar tabelas que têm dados de verdade.
+if (!process.env.DATABASE_URL.includes("_teste")) {
+  console.error(
+    "\nERRO: os testes de integração só rodam contra um banco com " +
+    "'_teste' no nome.\nURL recebida: " + process.env.DATABASE_URL + "\n"
+  );
+  process.exit(1);
+}

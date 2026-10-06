@@ -1,0 +1,292 @@
+/* ============================================================
+   Estilo do painel
+
+   Sem biblioteca de componentes: o projeto é de estudo e a ideia
+   é escrever o CSS na mão. As cores saem de variáveis para o
+   tema inteiro mudar num lugar só.
+
+   A cara é de painel de controle antigo: fundo escuro, texto
+   claro, monoespaçada nos códigos e nos números — que é onde o
+   alinhamento entre linhas ajuda a comparar.
+   ============================================================ */
+
+:root {
+  --fundo: #14161a;
+  --superficie: #1c1f26;
+  --superficie-alta: #242832;
+  --borda: #2f3541;
+
+  --texto: #e6e9ef;
+  --texto-fraco: #99a1b3;
+
+  --destaque: #4ea3ff;
+  --sucesso: #48c78e;
+  --alerta: #f2a33c;
+  --erro: #ef5e64;
+
+  --raio: 8px;
+  --mono: "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+a { color: var(--destaque); }
+
+/* ----- Estrutura ----- */
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--borda);
+  background: var(--superficie);
+}
+
+.marca {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 18px;
+}
+
+.marca span { color: var(--destaque); }
+
+.conteudo {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ----- Formulários ----- */
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 20px;
+}
+
+.cartao-entrada {
+  max-width: 380px;
+  margin: 64px auto;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--texto-fraco);
+  margin-bottom: 4px;
+}
+
+input {
+  width: 100%;
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--destaque);
+}
+
+button {
+  padding: 9px 16px;
+  background: var(--destaque);
+  border: none;
+  border-radius: var(--raio);
+  color: #0b1017;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover { filter: brightness(1.1); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+button.discreto {
+  background: transparent;
+  border: 1px solid var(--borda);
+  color: var(--texto-fraco);
+  font-weight: 500;
+}
+
+button.discreto:hover {
+  color: var(--texto);
+  border-color: var(--texto-fraco);
+  filter: none;
+}
+
+.linha-formulario {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.linha-formulario > div { flex: 1; }
+.linha-formulario input { margin-bottom: 0; }
+.linha-formulario button { margin-bottom: 1px; }
+
+/* ----- Avisos ----- */
+
+.erro, .aviso {
+  padding: 10px 12px;
+  border-radius: var(--raio);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.erro {
+  background: rgba(239, 94, 100, 0.12);
+  border: 1px solid rgba(239, 94, 100, 0.35);
+  color: var(--erro);
+}
+
+.aviso {
+  background: rgba(78, 163, 255, 0.1);
+  border: 1px solid rgba(78, 163, 255, 0.3);
+  color: var(--destaque);
+}
+
+/* ----- Lista de links ----- */
+
+.lista { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+.item:hover { border-color: #3c4454; }
+
+.item-principal { flex: 1; min-width: 0; }
+
+.codigo {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--destaque);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 500;
+}
+
+.destino {
+  color: var(--texto-fraco);
+  font-size: 13px;
+  /* O destino pode ser uma URL gigante; corta com reticências em
+     vez de empurrar o resto do card para fora da tela. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contador {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  text-align: right;
+  min-width: 64px;
+}
+
+.contador small {
+  display: block;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--texto-fraco);
+}
+
+.desativado { opacity: 0.5; }
+
+.vazio {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--texto-fraco);
+}
+
+/* ----- Detalhe e gráficos ----- */
+
+.cartoes-numero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.numero {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 14px 16px;
+}
+
+.numero .valor {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.numero .rotulo {
+  font-size: 12px;
+  color: var(--texto-fraco);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.graficos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.grafico-largo { grid-column: 1 / -1; }
+
+.titulo-secao {
+  font-size: 13px;
+  color: var(--texto-fraco);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 12px;
+}
+
+.barra-origem {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--borda);
+  font-size: 14px;
+}
+
+.barra-origem:last-child { border-bottom: none; }
+.barra-origem span:last-child { font-family: var(--mono); }
+
+/* Uma coluna no celular — o painel é consultado do telefone com
+   a mesma frequência que do computador. */
+@media (max-width: 760px) {
+  .graficos { grid-template-columns: 1fr; }
+  .item { flex-wrap: wrap; }
+  .linha-formulario { flex-direction: column; align-items: stretch; }
+}
